@@ -32,11 +32,11 @@ export const SignUpImpl: React.SFC<any> = ({ history }) => {
             setResponseStatus(null);
 
             const response = await client.post(new Register({
-                displayName: displayName,
-                email: email,
-                password: password,
-                confirmPassword: confirmPassword,
-                autoLogin: autoLogin,
+                displayName,
+                email,
+                password,
+                confirmPassword,
+                autoLogin,
             }));
             
             await checkAuth(dispatch);
@@ -70,7 +70,9 @@ export const SignUpImpl: React.SFC<any> = ({ history }) => {
                 <Input type="password" name="confirmPassword" value={confirmPassword} onChange={setConfirmPassword} responseStatus={responseStatus} placeholder="Confirm" />
             </div>
             <div className="form-group">
-                <CheckBox name="autoLogin" checked={autoLogin} onChange={setAutoLogin} responseStatus={responseStatus} >Auto Login</CheckBox>
+                <CheckBox name="autoLogin" checked={autoLogin} onChange={setAutoLogin} responseStatus={responseStatus}>
+                    Auto Login
+                </CheckBox>
             </div>
             <div className="form-group">
                 <button className="btn btn-lg btn-primary" type="submit">Register</button>
