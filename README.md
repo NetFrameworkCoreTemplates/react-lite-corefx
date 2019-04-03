@@ -4,9 +4,11 @@
 
 [![](https://raw.githubusercontent.com/ServiceStack/Assets/master/csharp-templates/react-lite.png)](http://react-lite.web-templates.io/)
 
-> Browse [source code](https://github.com/NetFrameworkCoreTemplates/react-lite-corefx) and view live demo [react-lite.web-templates.io](http://react-lite.web-templates.io) and install with [web new](https://docs.servicestack.net/web-new):
+> Browse [source code](https://github.com/NetFrameworkCoreTemplates/react-lite-corefx) and view live demo [react-lite.web-templates.io](http://react-lite.web-templates.io)
 
-    $ dotnet tool install --global web
+Install with `web` .NET Core tool:
+
+    $ dotnet tool install -g web
 
     $ web new react-lite-corefx ProjectName
 
