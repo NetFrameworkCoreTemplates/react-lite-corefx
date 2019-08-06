@@ -29,7 +29,47 @@ export declare class ErrorResponse {
     type: ErrorResponseType;
     responseStatus: ResponseStatus;
 }
+export declare class NavItem {
+    label: string;
+    href: string;
+    exact: boolean;
+    id: string;
+    className: string;
+    iconClass: string;
+    show: string;
+    hide: string;
+    children: NavItem[];
+    meta: {
+        [index: string]: string;
+    };
+    constructor(init?: Partial<NavItem>);
+}
+export declare class GetNavItems {
+    constructor(init?: Partial<GetNavItems>);
+    createResponse(): GetNavItemsResponse;
+    getTypeName(): string;
+}
+export declare class GetNavItemsResponse {
+    baseUrl: string;
+    results: NavItem[];
+    navItemsMap: {
+        [index: string]: NavItem[];
+    };
+    meta: {
+        [index: string]: string;
+    };
+    responseStatus: ResponseStatus;
+    constructor(init?: Partial<GetNavItemsResponse>);
+}
 export declare type ErrorResponseType = null | "RefreshTokenException";
+export interface IAuthSession {
+    userName: string;
+    displayName: string;
+    userId?: string;
+    roles?: string[];
+    permissions?: string[];
+    profileUrl?: string;
+}
 export interface IResolver {
     tryResolve(Function: any): any;
 }
@@ -257,6 +297,7 @@ export declare class JsonServiceClient {
     bearerToken: string;
     refreshToken: string;
     refreshTokenUri: string;
+    useTokenCookie: boolean;
     requestFilter: (req: IRequestInit) => void;
     responseFilter: (res: Response) => void;
     exceptionFilter: (res: Response, error: any) => void;
@@ -281,10 +322,13 @@ export declare class JsonServiceClient {
     patch<T>(request: IReturn<T>, args?: any): Promise<T>;
     patchToUrl<T>(url: string, request: IReturn<T>, args?: any): Promise<T>;
     patchBody<T>(request: IReturn<T>, body: string | any, args?: any): Promise<T>;
+    publish(request: IReturnVoid, args?: any): Promise<any>;
+    sendOneWay<T>(request: IReturn<T> | IReturnVoid, args?: any): Promise<T>;
     sendAll<T>(requests: IReturn<T>[]): Promise<T[]>;
     sendAllOneWay<T>(requests: IReturn<T>[]): Promise<void>;
     createUrlFromDto<T>(method: string, request: IReturn<T>): string;
     toAbsoluteUrl(relativeOrAbsoluteUrl: string): string;
+    deleteCookie(name: string): void;
     private createRequest({method, request, url, args, body});
     private createResponse<T>(res, request);
     private handleError(holdRes, res, type?);
@@ -293,6 +337,7 @@ export declare class JsonServiceClient {
     sendRequest<T>(info: ISendRequest): Promise<T>;
     raiseError(res: Response, error: any): any;
 }
+export declare const isFormData: (body: any) => boolean;
 export declare const toCamelCase: (s: string) => string;
 export declare const toPascalCase: (s: string) => string;
 export declare const sanitize: (status: any) => any;
@@ -330,7 +375,7 @@ export interface ICreateElementOptions {
 }
 export declare function createElement(tagName: string, options?: ICreateElementOptions, attrs?: any): HTMLElement;
 export declare function bootstrap(el?: Element): void;
-export declare function bindHandlers(handlers: any, el?: Node): void;
+export declare function bindHandlers(handlers: any, el?: Document | Element): void;
 export interface IAjaxFormOptions {
     type?: string;
     url?: string;
@@ -366,3 +411,64 @@ export declare function serializeToUrlEncoded(form: HTMLFormElement): string;
 export declare const serializeToFormData: (form: HTMLFormElement) => FormData;
 export declare function triggerEvent(el: Element, name: string, data?: any): void;
 export declare function populateForm(form: HTMLFormElement, model: any): void;
+export declare function trimEnd(s: string, c: string): string;
+export declare function safeVarName(s: string): string;
+export declare function pick(o: any, keys: string[]): {};
+export declare function omit(o: any, keys: string[]): {};
+export declare function activeClassNav(x: NavItem, activePath: string): string;
+export declare function activeClass(href: string | null, activePath: string, exact?: boolean): string;
+export declare const BootstrapColors: string[];
+export declare function btnColorClass(props: any): string;
+export declare const BootstrapSizes: string[];
+export declare function btnSizeClass(props: any): string;
+export declare function btnClasses(props: any): any[];
+export declare class NavDefaults {
+    static navClass: string;
+    static navItemClass: string;
+    static navLinkClass: string;
+    static childNavItemClass: string;
+    static childNavLinkClass: string;
+    static childNavMenuClass: string;
+    static childNavMenuItemClass: string;
+    static create(): NavOptions;
+    static forNav(options?: NavOptions | null): NavOptions;
+    static overrideDefaults(targets: NavOptions | null | undefined, source: NavOptions): NavOptions;
+    static showNav(navItem: NavItem, attributes: string[]): boolean;
+}
+export declare class NavLinkDefaults {
+    static forNavLink(options?: NavOptions | null): NavOptions;
+}
+export declare class NavbarDefaults {
+    static navClass: string;
+    static create(): NavOptions;
+    static forNavbar(options?: NavOptions | null): NavOptions;
+}
+export declare class NavButtonGroupDefaults {
+    static navClass: string;
+    static navItemClass: string;
+    static create(): NavOptions;
+    static forNavButtonGroup(options?: NavOptions | null): NavOptions;
+}
+export declare class LinkButtonDefaults {
+    static navItemClass: string;
+    static create(): NavOptions;
+    static forLinkButton(options?: NavOptions | null): NavOptions;
+}
+export declare class UserAttributes {
+    static fromSession(session: IAuthSession | null): string[];
+}
+export declare class NavOptions {
+    static fromSession(session: IAuthSession | null, to?: NavOptions): NavOptions;
+    attributes: string[];
+    activePath?: string;
+    baseHref?: string;
+    navClass?: string;
+    navItemClass?: string;
+    navLinkClass?: string;
+    childNavItemClass?: string;
+    childNavLinkClass?: string;
+    childNavMenuClass?: string;
+    childNavMenuItemClass?: string;
+    constructor(init?: Partial<NavOptions>);
+}
+export declare function classNames(...args: any[]): string;

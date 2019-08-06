@@ -14,7 +14,7 @@ var __assign = (this && this.__assign) || Object.assign || function(t) {
     else if (typeof define === "function" && define.amd) {
         define(["require", "exports", "fetch-everywhere"], factory);
     }
-    else if (typeof window != "undefined") factory(function(){}, window["@servicestack/client"]={});
+    else if (typeof window != "undefined") factory(window.require||function(){}, window["@servicestack/client"]={});
 })(function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -40,6 +40,29 @@ var __assign = (this && this.__assign) || Object.assign || function(t) {
         return ErrorResponse;
     }());
     exports.ErrorResponse = ErrorResponse;
+    var NavItem = /** @class */ (function () {
+        function NavItem(init) {
+            Object.assign(this, init);
+        }
+        return NavItem;
+    }());
+    exports.NavItem = NavItem;
+    var GetNavItems = /** @class */ (function () {
+        function GetNavItems(init) {
+            Object.assign(this, init);
+        }
+        GetNavItems.prototype.createResponse = function () { return new GetNavItemsResponse(); };
+        GetNavItems.prototype.getTypeName = function () { return 'GetNavItems'; };
+        return GetNavItems;
+    }());
+    exports.GetNavItems = GetNavItems;
+    var GetNavItemsResponse = /** @class */ (function () {
+        function GetNavItemsResponse(init) {
+            Object.assign(this, init);
+        }
+        return GetNavItemsResponse;
+    }());
+    exports.GetNavItemsResponse = GetNavItemsResponse;
     var NewInstanceResolver = /** @class */ (function () {
         function NewInstanceResolver() {
         }
@@ -251,7 +274,7 @@ var __assign = (this && this.__assign) || Object.assign || function(t) {
             var es = this.EventSource
                 ? new this.EventSource(url, this.getEventSourceOptions())
                 : new EventSource(url, this.getEventSourceOptions());
-            es.addEventListener('error', function (e) { return opt.onerror || hold.onerror || _this.onError; });
+            es.addEventListener('error', function (e) { return (opt.onerror || hold.onerror || _this.onError)(e); });
             es.addEventListener('message', opt.onmessage || hold.onmessage || this.onMessage);
             var fn = this.options.onReconnect;
             if (fn != null)
@@ -545,7 +568,8 @@ var __assign = (this && this.__assign) || Object.assign || function(t) {
     }());
     exports.HttpMethods = HttpMethods;
     var GetAccessToken = /** @class */ (function () {
-        function GetAccessToken() {
+        function GetAccessToken(init) {
+            Object.assign(this, init);
         }
         GetAccessToken.prototype.createResponse = function () { return new GetAccessTokenResponse(); };
         GetAccessToken.prototype.getTypeName = function () { return "GetAccessToken"; };
@@ -615,6 +639,13 @@ var __assign = (this && this.__assign) || Object.assign || function(t) {
         JsonServiceClient.prototype.patchBody = function (request, body, args) {
             return this.sendBody(HttpMethods.Patch, request, body, args);
         };
+        JsonServiceClient.prototype.publish = function (request, args) {
+            return this.sendOneWay(request, args);
+        };
+        JsonServiceClient.prototype.sendOneWay = function (request, args) {
+            var url = exports.combinePaths(this.oneWayBaseUrl, exports.nameOf(request));
+            return this.send(HttpMethods.Post, request, null, url);
+        };
         JsonServiceClient.prototype.sendAll = function (requests) {
             if (requests.length == 0)
                 return Promise.resolve([]);
@@ -640,6 +671,16 @@ var __assign = (this && this.__assign) || Object.assign || function(t) {
                 relativeOrAbsoluteUrl.startsWith("https://")
                 ? relativeOrAbsoluteUrl
                 : exports.combinePaths(this.baseUrl, relativeOrAbsoluteUrl);
+        };
+        JsonServiceClient.prototype.deleteCookie = function (name) {
+            if (this.manageCookies) {
+                delete this.cookies[name];
+            }
+            else {
+                if (document) {
+                    document.cookie = name + '=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/';
+                }
+            }
         };
         JsonServiceClient.prototype.createRequest = function (_a) {
             var _this = this;
@@ -680,7 +721,7 @@ var __assign = (this && this.__assign) || Object.assign || function(t) {
             };
             if (hasRequestBody) {
                 reqInit.body = body || JSON.stringify(request);
-                if (typeof window != "undefined" && body instanceof FormData) {
+                if (exports.isFormData(body)) {
                     headers.delete('Content-Type'); //set by FormData
                 }
             }
@@ -772,7 +813,7 @@ var __assign = (this && this.__assign) || Object.assign || function(t) {
                 request: body,
                 body: typeof body == "string"
                     ? body
-                    : typeof window != "undefined" && body instanceof FormData
+                    : exports.isFormData(body)
                         ? body
                         : JSON.stringify(body),
                 url: exports.appendQueryString(url, request),
@@ -804,21 +845,35 @@ var __assign = (this && this.__assign) || Object.assign || function(t) {
                 .catch(function (res) {
                 if (res.status === 401) {
                     if (_this.refreshToken) {
-                        var jwtReq_1 = new GetAccessToken();
-                        jwtReq_1.refreshToken = _this.refreshToken;
+                        var jwtReq_1 = new GetAccessToken({ refreshToken: _this.refreshToken, useTokenCookie: _this.useTokenCookie });
                         var url = _this.refreshTokenUri || _this.createUrlFromDto(HttpMethods.Post, jwtReq_1);
+                        if (_this.useTokenCookie) {
+                            _this.bearerToken = null;
+                            _this.headers.delete("Authorization");
+                        }
                         var jwtRequest = _this.createRequest({ method: HttpMethods.Post, request: jwtReq_1, args: null, url: url });
                         return fetch(url, jwtRequest)
                             .then(function (r) { return _this.createResponse(r, jwtReq_1).then(function (jwtResponse) {
-                            _this.bearerToken = jwtResponse.accessToken;
+                            _this.bearerToken = jwtResponse.accessToken || null;
                             return resendRequest();
                         }); })
                             .catch(function (res) {
-                            return _this.handleError(holdRes, res, "RefreshTokenException");
+                            if (_this.onAuthenticationRequired) {
+                                return _this.onAuthenticationRequired()
+                                    .then(resendRequest)
+                                    .catch(function (resHandler) {
+                                    return _this.handleError(holdRes, resHandler, "RefreshTokenException");
+                                });
+                            }
+                            else {
+                                return _this.handleError(holdRes, res, "RefreshTokenException");
+                            }
                         });
                     }
-                    if (_this.onAuthenticationRequired) {
-                        return _this.onAuthenticationRequired().then(resendRequest);
+                    else {
+                        if (_this.onAuthenticationRequired) {
+                            return _this.onAuthenticationRequired().then(resendRequest);
+                        }
                     }
                 }
                 return _this.handleError(holdRes, res);
@@ -833,6 +888,7 @@ var __assign = (this && this.__assign) || Object.assign || function(t) {
         return JsonServiceClient;
     }());
     exports.JsonServiceClient = JsonServiceClient;
+    exports.isFormData = function (body) { return typeof window != "undefined" && body instanceof FormData; };
     var createErrorResponse = function (errorCode, message, type) {
         if (type === void 0) { type = null; }
         var error = new ErrorResponse();
@@ -1294,15 +1350,17 @@ var __assign = (this && this.__assign) || Object.assign || function(t) {
             };
         }
     }
-    function bindHandlers(handlers, el) {
+    var EVENTS = 'click dblclick change focus blur focusin focusout select keydown keypress keyup hover toggle input'.split(' ');
+    function handleEvent(handlers, el, type) {
         if (el === void 0) { el = document; }
-        el.addEventListener('click', function (evt) {
+        el.addEventListener(type, function (evt) {
+            var evtData = "data-" + type;
             var el = evt.target;
-            var x = attr(el, 'data-click');
+            var x = attr(el, evtData);
             if (!x) {
-                var elParent = el.closest('[data-click]');
+                var elParent = el.closest("[" + evtData + "]");
                 if (elParent)
-                    x = attr(elParent, 'data-click');
+                    x = attr(elParent, evtData);
             }
             if (!x)
                 return;
@@ -1320,6 +1378,14 @@ var __assign = (this && this.__assign) || Object.assign || function(t) {
                 if (fn) {
                     fn.apply(evt.target, [].slice.call(arguments));
                 }
+            }
+        });
+    }
+    function bindHandlers(handlers, el) {
+        if (el === void 0) { el = document; }
+        EVENTS.forEach(function (evt) {
+            if (el.querySelector("[data-" + evt + "]")) {
+                handleEvent(handlers, el, evt);
             }
         });
     }
@@ -1704,4 +1770,256 @@ var __assign = (this && this.__assign) || Object.assign || function(t) {
         }
     }
     exports.populateForm = populateForm;
+    function trimEnd(s, c) {
+        var end = s.length;
+        while (end > 0 && s[end - 1] === c) {
+            --end;
+        }
+        return (end < s.length) ? s.substring(0, end) : s;
+    }
+    exports.trimEnd = trimEnd;
+    function safeVarName(s) {
+        return s.replace(/[\W]+/g, '');
+    }
+    exports.safeVarName = safeVarName;
+    function pick(o, keys) {
+        var to = {};
+        for (var k in o) {
+            if (o.hasOwnProperty(k) && keys.indexOf(k) >= 0) {
+                to[k] = o[k];
+            }
+        }
+        return to;
+    }
+    exports.pick = pick;
+    function omit(o, keys) {
+        var to = {};
+        for (var k in o) {
+            if (o.hasOwnProperty(k) && keys.indexOf(k) < 0) {
+                to[k] = o[k];
+            }
+        }
+        return to;
+    }
+    exports.omit = omit;
+    /* NAV */
+    function activeClassNav(x, activePath) {
+        return x.href != null && (x.exact || activePath.length <= 1
+            ? trimEnd(activePath, '/').toLowerCase() === trimEnd((x.href), '/').toLowerCase()
+            : trimEnd(activePath, '/').toLowerCase().startsWith(trimEnd((x.href), '/').toLowerCase()))
+            ? 'active'
+            : null;
+    }
+    exports.activeClassNav = activeClassNav;
+    function activeClass(href, activePath, exact) {
+        return href != null && (exact || activePath.length <= 1
+            ? trimEnd(activePath, '/').toLowerCase() === trimEnd(href, '/').toLowerCase()
+            : trimEnd(activePath, '/').toLowerCase().startsWith(trimEnd(href, '/').toLowerCase()))
+            ? 'active'
+            : null;
+    }
+    exports.activeClass = activeClass;
+    exports.BootstrapColors = ['primary', 'secondary', 'success', 'info', 'warning', 'danger', 'light', 'dark'];
+    function btnColorClass(props) {
+        for (var _i = 0, BootstrapColors_1 = exports.BootstrapColors; _i < BootstrapColors_1.length; _i++) {
+            var color = BootstrapColors_1[_i];
+            if (props[color]) {
+                return 'btn-' + color;
+            }
+            if (props['outline-' + color]) {
+                return 'btn-outline-' + color;
+            }
+        }
+        return null;
+    }
+    exports.btnColorClass = btnColorClass;
+    exports.BootstrapSizes = ['xs', 'sm', 'md', 'lg'];
+    function btnSizeClass(props) {
+        for (var _i = 0, BootstrapSizes_1 = exports.BootstrapSizes; _i < BootstrapSizes_1.length; _i++) {
+            var size = BootstrapSizes_1[_i];
+            if (props[size]) {
+                return 'btn-' + size;
+            }
+        }
+        return null;
+    }
+    exports.btnSizeClass = btnSizeClass;
+    ;
+    function btnClasses(props) {
+        var to = [];
+        var color = btnColorClass(props);
+        if (color) {
+            to.push(color);
+        }
+        var size = btnSizeClass(props);
+        if (size) {
+            to.push(size);
+        }
+        if (props.block) {
+            to.push('btn-block');
+        }
+        return to;
+    }
+    exports.btnClasses = btnClasses;
+    var NavDefaults = /** @class */ (function () {
+        function NavDefaults() {
+        }
+        NavDefaults.create = function () { return new NavOptions(); };
+        NavDefaults.forNav = function (options) { return options || NavDefaults.create(); };
+        NavDefaults.overrideDefaults = function (targets, source) {
+            if (targets == null) {
+                return source;
+            }
+            targets = Object.assign({}, targets); // clone
+            if (targets.navClass === NavDefaults.navClass && source.navClass != null) {
+                targets.navClass = source.navClass;
+            }
+            if (targets.navItemClass === NavDefaults.navItemClass && source.navItemClass != null) {
+                targets.navItemClass = source.navItemClass;
+            }
+            if (targets.navLinkClass === NavDefaults.navLinkClass && source.navLinkClass != null) {
+                targets.navLinkClass = source.navLinkClass;
+            }
+            if (targets.childNavItemClass === NavDefaults.childNavItemClass && source.childNavItemClass != null) {
+                targets.childNavItemClass = source.childNavItemClass;
+            }
+            if (targets.childNavLinkClass === NavDefaults.childNavLinkClass && source.childNavLinkClass != null) {
+                targets.childNavLinkClass = source.childNavLinkClass;
+            }
+            if (targets.childNavMenuClass === NavDefaults.childNavMenuClass && source.childNavMenuClass != null) {
+                targets.childNavMenuClass = source.childNavMenuClass;
+            }
+            if (targets.childNavMenuItemClass === NavDefaults.childNavMenuItemClass && source.childNavMenuItemClass != null) {
+                targets.childNavMenuItemClass = source.childNavMenuItemClass;
+            }
+            return targets;
+        };
+        NavDefaults.showNav = function (navItem, attributes) {
+            if (attributes == null || attributes.length === 0) {
+                return navItem.show == null;
+            }
+            if (navItem.show != null && attributes.indexOf(navItem.show) < 0) {
+                return false;
+            }
+            if (navItem.hide != null && attributes.indexOf(navItem.hide) >= 0) {
+                return false;
+            }
+            return true;
+        };
+        NavDefaults.navClass = 'nav';
+        NavDefaults.navItemClass = 'nav-item';
+        NavDefaults.navLinkClass = 'nav-link';
+        NavDefaults.childNavItemClass = 'nav-item dropdown';
+        NavDefaults.childNavLinkClass = 'nav-link dropdown-toggle';
+        NavDefaults.childNavMenuClass = 'dropdown-menu';
+        NavDefaults.childNavMenuItemClass = 'dropdown-item';
+        return NavDefaults;
+    }());
+    exports.NavDefaults = NavDefaults;
+    var NavLinkDefaults = /** @class */ (function () {
+        function NavLinkDefaults() {
+        }
+        NavLinkDefaults.forNavLink = function (options) { return options || NavDefaults.create(); };
+        return NavLinkDefaults;
+    }());
+    exports.NavLinkDefaults = NavLinkDefaults;
+    var NavbarDefaults = /** @class */ (function () {
+        function NavbarDefaults() {
+        }
+        NavbarDefaults.create = function () { return new NavOptions({ navClass: NavbarDefaults.navClass }); };
+        NavbarDefaults.forNavbar = function (options) { return NavDefaults.overrideDefaults(options, NavbarDefaults.create()); };
+        NavbarDefaults.navClass = 'navbar-nav';
+        return NavbarDefaults;
+    }());
+    exports.NavbarDefaults = NavbarDefaults;
+    var NavButtonGroupDefaults = /** @class */ (function () {
+        function NavButtonGroupDefaults() {
+        }
+        NavButtonGroupDefaults.create = function () { return new NavOptions({ navClass: NavButtonGroupDefaults.navClass, navItemClass: NavButtonGroupDefaults.navItemClass }); };
+        NavButtonGroupDefaults.forNavButtonGroup = function (options) { return NavDefaults.overrideDefaults(options, NavButtonGroupDefaults.create()); };
+        NavButtonGroupDefaults.navClass = 'btn-group';
+        NavButtonGroupDefaults.navItemClass = 'btn btn-primary';
+        return NavButtonGroupDefaults;
+    }());
+    exports.NavButtonGroupDefaults = NavButtonGroupDefaults;
+    var LinkButtonDefaults = /** @class */ (function () {
+        function LinkButtonDefaults() {
+        }
+        LinkButtonDefaults.create = function () { return new NavOptions({ navItemClass: LinkButtonDefaults.navItemClass }); };
+        LinkButtonDefaults.forLinkButton = function (options) { return NavDefaults.overrideDefaults(options || null, LinkButtonDefaults.create()); };
+        LinkButtonDefaults.navItemClass = 'btn';
+        return LinkButtonDefaults;
+    }());
+    exports.LinkButtonDefaults = LinkButtonDefaults;
+    var UserAttributes = /** @class */ (function () {
+        function UserAttributes() {
+        }
+        UserAttributes.fromSession = function (session) {
+            var to = [];
+            if (session != null) {
+                to.push('auth');
+                if (session.roles) {
+                    to.push.apply(to, session.roles.map(function (x) { return 'role:' + x; }));
+                }
+                if (session.permissions) {
+                    to.push.apply(to, session.permissions.map(function (x) { return 'perm:' + x; }));
+                }
+            }
+            return to;
+        };
+        return UserAttributes;
+    }());
+    exports.UserAttributes = UserAttributes;
+    var NavOptions = /** @class */ (function () {
+        function NavOptions(init) {
+            this.attributes = [];
+            this.navClass = NavDefaults.navClass;
+            this.navItemClass = NavDefaults.navItemClass;
+            this.navLinkClass = NavDefaults.navLinkClass;
+            this.childNavItemClass = NavDefaults.childNavItemClass;
+            this.childNavLinkClass = NavDefaults.childNavLinkClass;
+            this.childNavMenuClass = NavDefaults.childNavMenuClass;
+            this.childNavMenuItemClass = NavDefaults.childNavMenuItemClass;
+            Object.assign(this, init);
+        }
+        NavOptions.fromSession = function (session, to) {
+            to = to || new NavOptions();
+            to.attributes = UserAttributes.fromSession(session);
+            return to;
+        };
+        return NavOptions;
+    }());
+    exports.NavOptions = NavOptions;
+    function classNames() {
+        var args = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            args[_i] = arguments[_i];
+        }
+        var classes = [];
+        for (var i = 0; i < args.length; i++) {
+            var arg = args[i];
+            if (!arg)
+                continue;
+            var argType = typeof arg;
+            if (argType === 'string' || argType === 'number') {
+                classes.push(arg);
+            }
+            else if (Array.isArray(arg) && arg.length) {
+                var inner = classNames.apply(null, arg);
+                if (inner) {
+                    classes.push(inner);
+                }
+            }
+            else if (argType === 'object') {
+                for (var _a = 0, _b = Object.keys(arg); _a < _b.length; _a++) {
+                    var key = _b[_a];
+                    if (arg[key]) {
+                        classes.push(key);
+                    }
+                }
+            }
+        }
+        return classes.join(' ');
+    }
+    exports.classNames = classNames;
 });
