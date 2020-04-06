@@ -1,16 +1,16 @@
 # react-lite-corefx
 
-.NET Core 2.1 simple + lite (npm-free) react SPA using TypeScript with integrated bundling + hot reloading
+ASP.NET Core 2.1 simple + lite (npm-free) react SPA using TypeScript with integrated bundling + hot reloading
 
 [![](https://raw.githubusercontent.com/ServiceStack/Assets/master/csharp-templates/react-lite.png)](http://react-lite.web-templates.io/)
 
 > Browse [source code](https://github.com/NetFrameworkCoreTemplates/react-lite-corefx) and view live demo [react-lite.web-templates.io](http://react-lite.web-templates.io)
 
-Install with `web` .NET Core tool:
+Install with `x` .NET Core tool:
 
-    $ dotnet tool install -g web
+    $ dotnet tool install -g x
 
-    $ web new react-lite-corefx ProjectName
+    $ x new react-lite-corefx ProjectName
 
 ### About
 
@@ -38,7 +38,7 @@ Using `watch run` will monitor changes to `C#` source files where it will automa
 
 After changing your ServiceStack Services, you can re-generate their [Typed TypeScript DTOs](https://docs.servicestack.net/typescript-add-servicestack-reference) with:
 
-    $ web ts
+    $ x ts
 
 #### Bundling
 
@@ -48,7 +48,7 @@ it utilizes a cached in-memory minified bundle created on first request in produ
 Optionally the same bundling configuration can be used in [_bundle.ss](https://github.com/NetCoreTemplates/react-lite/blob/master/wwwroot/_bundle.ss)
 to generate and save a more advanced optimized bundle using NUglify with:
 
-    $ web run wwwroot\_bundle.ss
+    $ x run wwwroot\_bundle.ss
 
 ### Publishing and Deployment
 
